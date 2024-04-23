@@ -29,7 +29,6 @@ class Player extends Entity {
 
   move(dx, dy) {
     const [x, y] = this.field.getPlayerPos();
-    const currentCell = this.field.getCell(x, y);
     const nextCell = this.field.getCell(x + dx, y + dy);
 
     const canThrough = ['empty', 'meal'];
@@ -39,9 +38,10 @@ class Player extends Entity {
       return;
     }
   
-    currentCell.setContent(new EmptyCell(this.cell));
+    this.cell.setContent(new EmptyCell(this.cell));
     nextCell.setContent(this);
     this.field.setPlayerPos(x + dx, y + dy);
+    this.cell = nextCell;
   }
 
   left() {
@@ -126,21 +126,19 @@ class Cell {
   }
 }
 
-const clearConsole = () => process.stdout.write(process.platform === 'win32' ? '\x1Bc' : '\x1B[2J\x1B[3J\x1B[H');
-
 class Field {
   constructor(x = 2, y = 2, startX = 0, startY = 0) {
     this.field = new Array(x);
-    for (let i = 0; i < x; i++) {
+    for (let i = 0; i < x; i += 1) {
       this.field[i] = new Array(y);
-      for (let j = 0; j < y; j++) {
+      for (let j = 0; j < y; j += 1) {
         this.field[i][j] = new Cell('empty', this);
       }
     }
     this.field[startX][startY] = new Cell('player', this);
     const maps = {};
 
-    this.player = [startX, startY];
+    this.player = [startX, startY]; 
     this.interval = null;
     this.status = false;
   }
@@ -170,7 +168,7 @@ class Field {
       this.interval = null;
     } else {
       this.interval = setInterval(() => {
-        clearConsole();
+        console.clear();
         console.log(this.toString());
       }, 400);
     }
@@ -228,6 +226,7 @@ class Field {
 }
 
 const field = new Field(5, 5, 0, 0);
+
 field.createMap(
   [
     [['empty'], ['empty'], ['empty'], ['empty'], ['empty']],
