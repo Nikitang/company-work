@@ -1,9 +1,11 @@
 // Базовый класс предок для всех сущностей на поле
 class Entity {
-  constructor(type, cell) {
+  constructor(type, cell, startPos) {
     this.type = type; // Тип сущности
     this.cell = cell; // Ссылка на ячейку, в которой находится сущность
     this.field = cell.getParentField(); // Получение ссылки на поле через ячейку
+    this.curPos = cell.getPos();
+    this.startPos = startPos;
   }
 
   // Методы доступа к свойствам сущности
@@ -13,61 +15,6 @@ class Entity {
 
   getType() {
     return this.type; // Получение типа сущности
-  }
-}
-
-// Класс для пустой ячейки
-class EmptyCell extends Entity {
-  constructor(cell) {
-    super('empty', cell); // Вызов конструктора базового класса с типом 'empty'
-  }
-}
-
-// Класс для игрока
-class Player extends Entity {
-  constructor(cell) {
-    super('player', cell); // Вызов конструктора базового класса с типом 'player'
-    this.eatenMeal = 0; // Количество съеденных единиц еды
-    this.direction = 'left'; // Направление движения игрока
-    this.interval = null; // Интервал для автоматического движения игрока
-  }
-
-  // Методы для перемещения игрока в разные направления
-  move(dx, dy) {
-    const [x, y] = this.field.getPlayerPos(); // Получение текущих координат игрока
-    const nextCell = this.field.getCell(x + dx, y + dy); // Получение следующей ячейки для перемещения
-
-    const canThrough = ['empty', 'meal', 'enemy']; // Список типов ячеек, через которые можно пройти
-  
-    // Проверка наличия препятствия в следующей ячейке
-    if (!nextCell || !canThrough.includes(nextCell.getContent().getType())) {
-      console.log(`Препятствие! Player остановился.`);
-      return;
-    }
-
-    // Обработка съеденной еды
-    if (nextCell.getContent().getType() === 'meal') {
-      this.eatenMeal += 1;
-    }
-
-    // Проверка условия поражения
-    if (nextCell.getContent().getType() === 'enemy') {
-      this.field.defeat();
-      return;
-    }
-
-    // Проверка условия победы
-    if (this.eatenMeal === this.field.getCountMeal()) {
-      this.field.win();
-      return;
-    }
-  
-    // Обновление содержимого текущей и следующей ячеек после перемещения
-    this.cell.setContent(new EmptyCell(this.cell));
-    nextCell.setContent(this);
-    // Обновление позиции игрока на поле
-    this.field.setPlayerPos(x + dx, y + dy);
-    this.cell = nextCell;
   }
 
   left() {
@@ -105,24 +52,99 @@ class Player extends Entity {
   }
 }
 
+// Класс для пустой ячейки
+class EmptyCell extends Entity {
+  constructor(cell, startPos) {
+    super('empty', cell, startPos); // Вызов конструктора базового класса с типом 'empty'
+  }
+}
+
+// Класс для игрока
+class Player extends Entity {
+  constructor(cell, startPos) {
+    super('player', cell, startPos); // Вызов конструктора базового класса с типом 'player'
+    this.eatenMeal = 0; // Количество съеденных единиц еды
+    this.direction = 'left'; // Направление движения игрока
+    this.interval = null; // Интервал для автоматического движения игрока
+  }
+
+  // Методы для перемещения игрока в разные направления
+  move(dx, dy) {
+    const [x, y] = this.curPos;
+    const nextCell = this.field.getCell(x + dx, y + dy); // Получение следующей ячейки для перемещения
+
+    const canThrough = ['empty', 'meal', 'enemy']; // Список типов ячеек, через которые можно пройти
+  
+    // Проверка наличия препятствия в следующей ячейке
+    if (!nextCell || !canThrough.includes(nextCell.getContent().getType())) {
+      console.log(`Препятствие! Player остановился.`);
+      return;
+    }
+
+    // Обработка съеденной еды
+    if (nextCell.getContent().getType() === 'meal') {
+      this.eatenMeal += 1;
+    }
+
+    // Проверка условия поражения
+    if (nextCell.getContent().getType() === 'enemy') {
+      this.field.defeat();
+      return;
+    }
+
+    // Проверка условия победы
+    if (this.eatenMeal === this.field.getCountMeal()) {
+      this.field.win();
+      return;
+    }
+  
+    // Обновление содержимого текущей и следующей ячеек после перемещения
+    this.cell.setContent(new EmptyCell(this.cell));
+    nextCell.setContent(this);
+    // Обновление позиции игрока на поле
+    this.field.setPlayerPos(x + dx, y + dy);
+    this.cell = nextCell;
+  }
+}
+
 // Класс для стены
 class Wall extends Entity {
-  constructor(cell) {
-    super('wall', cell); // Вызов конструктора базового класса с типом 'wall'
+  constructor(cell, startPos) {
+    super('wall', cell, startPos); // Вызов конструктора базового класса с типом 'wall'
   }
 }
 
 // Класс для еды
 class Meal extends Entity {
-  constructor(cell) {
-    super('meal', cell); // Вызов конструктора базового класса с типом 'meal'
+  constructor(cell, startPos) {
+    super('meal', cell, startPos); // Вызов конструктора базового класса с типом 'meal'
   }
 }
 
 // Класс для врага
 class Enemy extends Entity {
-  constructor(cell) {
-    super('enemy', cell); // Вызов конструктора базового класса с типом 'enemy'
+  constructor(cell, startPos) {
+    super('enemy', cell, startPos); // Вызов конструктора базового класса с типом 'enemy'
+    this.see = false;
+    this.direction = 'left'; // Направление движения игрока
+    this.interval = null; // Интервал для автоматического движения игрока
+  }
+
+  move(dx, dy) {
+    const [x, y] = this.curPos;
+    const nextCell = this.field.getCell(x + dx, y + dy);
+
+    const canThrough = ['empty', 'meal', 'enemy'];
+  
+    if (!nextCell || !canThrough.includes(nextCell.getContent().getType())) {
+      console.log(`Препятствие! Enemy остановился.`);
+      return;
+    }
+  
+    this.cell.setContent(new EmptyCell(this.cell));
+    nextCell.setContent(this);
+    this.curPos = nextCell.getPos();
+    this.cell = nextCell;
   }
 }
 
@@ -137,14 +159,15 @@ const cellContentMap = {
 
 // Класс для ячейки поля
 class Cell {
-  constructor(type, field) {
+  constructor(type, field, pos) {
     const EntityClass = cellContentMap[type]; // Получение соответствующего класса сущности по типу
     if (!EntityClass) {
       throw new Error('Тип ячейки не найден!');
     }
 
     this.field = field; // Ссылка на поле
-    this.content = new EntityClass(this); // Создание экземпляра сущности в ячейке
+    this.currentPos = pos;
+    this.content = new EntityClass(this, pos); // Создание экземпляра сущности в ячейке
   }
 
   // Методы для работы с содержимым ячейки
@@ -159,6 +182,10 @@ class Cell {
   getParentField() {
     return this.field;
   }
+
+  getPos() {
+    return this.currentPos;
+  }
 }
 
 // Класс для игрового поля
@@ -168,6 +195,7 @@ class Field {
     this.player = [startX, startY]; // Позиция игрока на поле
     this.interval = null; // Интервал для обновления вывода поля
     this.status = false; // Статус игры (запущена/остановлена)
+    this.enemyList = [];
   }
 
   // Методы для работы с полем и картами
@@ -218,6 +246,13 @@ class Field {
       clearInterval(ply.interval);
       ply.interval = null;
     }
+
+    this.enemyList.forEach((enemy) => {
+      if (enemy.interval !== null) {
+        clearInterval(enemy.interval);
+        enemy.interval = null;
+      }
+    });
   }
 
   // Включение/выключение интервала для обновления вывода игрового поля
@@ -263,6 +298,8 @@ class Field {
       player.toggleInterval();
       this.toggleInterval();
       this.toggleStatus();
+
+      this.enemyList.forEach(enemy => enemy.toggleInterval());
     }
   }
 
@@ -273,6 +310,7 @@ class Field {
       player.toggleInterval();
       this.toggleInterval();
       this.toggleStatus();
+      this.enemyList.forEach(enemy => enemy.toggleInterval());
     }
   }
 
@@ -322,13 +360,19 @@ class Field {
         } else {
           throw new Error('На карте не может быть больше одного игрока!');
         }
-    }
+      }
 
       if (type === 'meal') {
         countMeal += 1;
       }
 
-      return [...accCell, new Cell(type, this)]
+      const newCell = new Cell(type, this, [lineId, cellId]);
+
+      if (type === 'enemy') {
+        this.enemyList.push(newCell.getContent());
+      }
+
+      return [...accCell, newCell]
     }, [])], [])
 
     if (countMeal === 0) {
@@ -361,7 +405,7 @@ field.addMap(1,
   [
     [['meal'], ['meal'], ['enemy'], ['meal'], ['meal']],
     [['meal'], ['wall'], ['wall'], ['wall'], ['meal']],
-    [['meal'], ['wall'], ['empty'], ['wall'], ['meal']],
+    [['meal'], ['wall'], ['empty'], ['wall'], ['enemy']],
     [['meal'], ['wall'], ['empty'], ['wall'], ['meal']],
     [['meal'], ['meal'], ['meal'], ['meal'], ['player']],
   ]
